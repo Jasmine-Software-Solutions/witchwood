@@ -10,6 +10,7 @@ public class PrincipalDirectory {
 
     protected PrincipalDirectory(Object2IntMap<UUID> principals) {
         this.principals = principals;
+        this.principals.defaultReturnValue(-1);
     }
 
     public int principalId(UUID principal) {

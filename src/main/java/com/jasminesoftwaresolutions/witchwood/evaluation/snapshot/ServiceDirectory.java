@@ -13,7 +13,9 @@ public class ServiceDirectory {
 
     protected ServiceDirectory(Map<String, UUID> servicePrincipals, Object2IntMap<String> actions) {
         this.servicePrincipals = servicePrincipals;
+
         this.actions = actions;
+        this.actions.defaultReturnValue(-1);
     }
 
     public UUID principalId(String service) {
