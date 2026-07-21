@@ -1,5 +1,8 @@
 package com.jasminesoftwaresolutions.witchwood.models;
 
+import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
+
 import java.util.Set;
 
 public interface IPolicyStatement {
@@ -8,7 +11,7 @@ public interface IPolicyStatement {
 
     PolicyEffect effect();
     Set<String> actions();
-    Set<String> resources();
+    Set<CompiledResourcePath> resources();
 
-    String condition();
+    JsonLogicNode condition();
 }
