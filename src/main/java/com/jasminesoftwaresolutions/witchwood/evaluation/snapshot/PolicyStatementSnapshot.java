@@ -4,7 +4,9 @@ import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.Comp
 import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class PolicyStatementSnapshot {
     protected final CompiledResourcePath[] resources;
@@ -21,6 +23,21 @@ public class PolicyStatementSnapshot {
 
     public JsonLogicNode condition() {
         return condition;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PolicyStatementSnapshot that)) return false;
+        if (condition == null ? that.condition != null : !condition.equals(that.condition)) return false;
+        return Arrays.equals(resources, that.resources);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Arrays.hashCode(resources);
+        result = 31 * result + Objects.hashCode(condition);
+        return result;
     }
 
     public static class Builder {

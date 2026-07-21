@@ -29,6 +29,32 @@ public class CompiledResourcePath {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof CompiledResourcePath that)) return false;
+        if (!service.equals(that.service)) return false;
+        return nodesEqual(root, that.root);
+    }
+
+    private static boolean nodesEqual(Node a, Node b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (!a.equals(b)) return false;
+        return nodesEqual(a.child(), b.child());
+    }
+
+    @Override
+    public int hashCode() {
+        int result = service.hashCode();
+        Node node = root;
+        while (node != null) {
+            result = 31 * result + node.hashCode();
+            node = node.child();
+        }
+        return result;
+    }
+
+    @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder(service + SERVICE_SEPARATOR);
 
