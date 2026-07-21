@@ -16,6 +16,9 @@ public class PermissionsTable {
     }
 
     public ArrayView<PermissionSetSnapshot> permissions(int principalId) {
+        if (offset.length == 0)
+            return new ArrayView<>(permissions, 0, 0);
+
         int nextPrincipalId = principalId + 1;
 
         int start = offset[principalId];
@@ -46,15 +49,22 @@ public class PermissionsTable {
         }
 
         public PermissionsTable build() {
-            final int[] offset = new int[size];
+            final int offsetLen = maxPrincipalId >= 0 ? maxPrincipalId + 1 : 0;
+            final int[] offset = new int[offsetLen];
             final PermissionSetSnapshot[] permissions = new PermissionSetSnapshot[size];
 
             int currentOffset = 0;
             int currentPermission = 0;
 
-            for (int i = 0; i <= maxPrincipalId; i++) {
+            for (int i = 0; i < offsetLen; i++) {
                 final List<PermissionSetSnapshot> subset = this.permissions.get(i);
-                if (subset == null) continue;
+                if (subset == null) {
+                    // Record the current offset so the next non-null principal starts
+                    // correctly, and so a principal with no PermissionSets returns
+                    // an empty view (start == end).
+                    offset[i] = currentOffset;
+                    continue;
+                }
 
                 offset[i] = currentOffset;
                 for (PermissionSetSnapshot permission : subset)
