@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("com.google.protobuf") version "0.9.5"
+    id("org.graalvm.buildtools.native") version "0.10.6"
 }
 
 group = "com.jasminesoftwaresolutions"
@@ -48,7 +49,6 @@ protobuf {
     }
 }
 
-// Ensure protobuf-generated sources are compiled before the main source set
 sourceSets {
     main {
         java {
@@ -64,4 +64,37 @@ tasks.compileJava {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register<Jar>("fatJar") {
+    dependsOn(tasks.compileJava)
+    archiveClassifier.set("all")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes("Main-Class" to "com.jasminesoftwaresolutions.witchwood.application.Application")
+    }
+    from(sourceSets.main.get().output)
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("witchwood")
+            mainClass.set("com.jasminesoftwaresolutions.witchwood.application.Application")
+
+            // jOOQ uses reflection for record mapping
+            buildArgs.add("--initialize-at-build-time=org.jooq")
+            buildArgs.add("-H:+AddAllCharsets")
+
+            // PostgreSQL driver needs javax.net.ssl at runtime
+            buildArgs.add("--enable-url-protocols=https")
+
+            // picocli annotation-based reflection
+            buildArgs.add("-H:ReflectionConfigurationResources=META-INF/native-image/reflect-config.json")
+
+            // jOOQ uses MethodHandles for record construction
+            buildArgs.add("--enable-preview")
+        }
+    }
 }

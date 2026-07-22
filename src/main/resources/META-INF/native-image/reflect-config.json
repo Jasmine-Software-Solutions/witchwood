@@ -1,0 +1,158 @@
+[
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.MainCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.BenchmarkCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.DumpDummyModelCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.ModelSnapshotCompilerBenchmarkCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.PersistedSnapshotCompilerBenchmarkCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.EvaluationEngineBenchmarkCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.application.commands.benchmark.CompiledResourcePathBenchmarkCommand",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.models.PolicyEffect",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicOperation",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicArray",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicVariable",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicNumber",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicString",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicBoolean",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "io.github.jamsesso.jsonlogic.ast.JsonLogicNull",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath$ResourceNode",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath$WildcardNode",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath$DefiniteId",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath$WildcardId",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.proto.CompiledResourcePath",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.proto.ResourceNode",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.proto.WildcardNode",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.jasminesoftwaresolutions.witchwood.proto.TypedResourceNode",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  }
+]
