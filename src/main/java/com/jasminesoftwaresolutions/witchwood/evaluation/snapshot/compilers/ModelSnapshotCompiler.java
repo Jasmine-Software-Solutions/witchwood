@@ -8,11 +8,34 @@ import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.ServiceDirecto
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
 import com.jasminesoftwaresolutions.witchwood.models.*;
 
+import java.time.Instant;
 import java.util.*;
 
+/**
+ * Compiles an {@link EvaluationSnapshot} — a denormalized, read-optimized
+ * permissions view — from a set of {@link IPrincipal} instances.
+ *
+ * <h3>Construction variants</h3>
+ * <ul>
+ *   <li>{@link #ModelSnapshotCompiler(ServiceDirectory, List)} —
+ *       convenience constructor for benchmarks and tests where all principals
+ *       are already in memory.</li>
+ *   <li>{@link #ModelSnapshotCompiler(ServiceDirectory, PrincipalSource, Instant)} —
+ *       streams principals from a backing store, filters role assignments by
+ *       {@code asOf}, and never materializes the full principal set.</li>
+ * </ul>
+ *
+ * <h3>Temporal filtering</h3>
+ * When an {@code asOf} timestamp is provided, role assignments whose
+ * {@link IPrincipalRoleAssignment#effective()} is after {@code asOf} or whose
+ * {@link IPrincipalRoleAssignment#expiration()} is before {@code asOf} are
+ * silently skipped.
+ */
 public class ModelSnapshotCompiler {
     protected ServiceDirectory serviceDirectory;
-    protected final List<IPrincipal> principals;
+    protected final Instant asOf;
+
+    protected final PrincipalSource principalSource;
 
     protected EvaluationSnapshot snapshot;
 
@@ -38,10 +61,33 @@ public class ModelSnapshotCompiler {
      */
     protected final Map<Integer, PermissionSetSnapshot> directPolicyPermissionSetCache = new HashMap<>();
 
+    /**
+     * Convenience constructor for benchmarks and tests where all principals
+     * are already materialized in memory. No temporal filtering is applied
+     * (equivalent to {@code asOf = Instant.MAX}).
+     */
     public ModelSnapshotCompiler(ServiceDirectory serviceDirectory, List<IPrincipal> principals) {
         this.serviceDirectory = serviceDirectory;
-        this.principals = principals;
-        this.snapshot = null;
+        this.principalSource = consumer -> {
+            for (IPrincipal p : principals)
+                consumer.accept(p);
+        };
+
+        this.asOf = Instant.MAX;
+    }
+
+    /**
+     * Streaming constructor with temporal filtering.
+     *
+     * @param serviceDirectory the action/service directory
+     * @param principalSource  streams principals from a backing store
+     * @param asOf             reference timestamp for filtering role assignments;
+     *                         use {@link Instant#MAX} to disable filtering
+     */
+    public ModelSnapshotCompiler(ServiceDirectory serviceDirectory, PrincipalSource principalSource, Instant asOf) {
+        this.serviceDirectory = serviceDirectory;
+        this.principalSource = principalSource;
+        this.asOf = Objects.requireNonNull(asOf);
     }
 
     public EvaluationSnapshot snapshot() {
@@ -49,22 +95,20 @@ public class ModelSnapshotCompiler {
     }
 
     public ModelSnapshotCompiler compile() {
-        EvaluationSnapshot.Builder snapshot = new EvaluationSnapshot.Builder();
-        snapshot.serviceDirectory(serviceDirectory);
-        this.serviceDirectory = snapshot.serviceDirectory().build();
+        EvaluationSnapshot.Builder snapshotBuilder = new EvaluationSnapshot.Builder();
+        snapshotBuilder.serviceDirectory(serviceDirectory);
+        this.serviceDirectory = snapshotBuilder.serviceDirectory().build();
 
-        for (IPrincipal principal : principals) {
-            int principalId = snapshot.principalDirectory().addPrincipal(principal.id());
+        principalSource.accept(principal -> {
+            int principalId = snapshotBuilder.principalDirectory().addPrincipal(principal.id());
 
-            // Build permission sets: one per role, plus one for directly-attached policies
-            List<PermissionSetSnapshot> permissionSets =
-                    buildPermissionSets(principal);
+            List<PermissionSetSnapshot> permissionSets = buildPermissionSets(principal);
 
             for (PermissionSetSnapshot permissionSet : permissionSets)
-                snapshot.permissionsTable().addPermissions(principalId, permissionSet);
-        }
+                snapshotBuilder.permissionsTable().addPermissions(principalId, permissionSet);
+        });
 
-        this.snapshot = snapshot.build();
+        this.snapshot = snapshotBuilder.build();
         return this;
     }
 
@@ -77,6 +121,13 @@ public class ModelSnapshotCompiler {
 
         // One PermissionSet per role — cached by role identity for shared (hot) roles
         for (IPrincipalRoleAssignment roleAssignment : principal.roles()) {
+            // Temporal filtering: skip roles outside the asOf window
+            if (asOf.isBefore(Instant.MAX)) {
+                if (roleAssignment.effective().isAfter(asOf)
+                        || roleAssignment.expiration().isBefore(asOf))
+                    continue;
+            }
+
             IRole role = roleAssignment.role();
             PermissionSetSnapshot permissionSet = rolePermissionSetCache.computeIfAbsent(
                     role.id(),
@@ -87,9 +138,6 @@ public class ModelSnapshotCompiler {
         // One PermissionSet for directly-attached policies
         Set<IPrincipalPolicyAssignment> directPolicies = principal.policies();
         if (!directPolicies.isEmpty()) {
-            // Use a composite key of all policy IDs for the combined permission set.
-            // For the common case of a single direct policy (numDirectPoliciesPerPrincipal=1),
-            // this degenerates to policy-level caching.
             int combinedKey = directPolicySetKey(directPolicies);
             PermissionSetSnapshot directSet = directPolicyPermissionSetCache.get(combinedKey);
             if (directSet == null) {

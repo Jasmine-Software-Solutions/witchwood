@@ -1,5 +1,6 @@
 package com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers;
 
+import com.jasminesoftwaresolutions.witchwood.entities.*;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.*;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.ServiceDirectory;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
@@ -11,124 +12,11 @@ import io.github.jamsesso.jsonlogic.ast.JsonLogicOperation;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ModelSnapshotCompilerTest {
-
-    // -----------------------------------------------------------------------
-    // Helpers: in-memory stubs for the model interfaces
-    // -----------------------------------------------------------------------
-
-    static class StubPrincipal implements IPrincipal {
-        private final UUID id;
-        private final Set<IPrincipalRoleAssignment> roles = new HashSet<>();
-        private final Set<IPrincipalPolicyAssignment> policies = new HashSet<>();
-
-        StubPrincipal(UUID id) { this.id = id; }
-
-        @Override public UUID id() { return id; }
-        @Override public Set<IPrincipalRoleAssignment> roles() { return roles; }
-        @Override public Set<IPrincipalPolicyAssignment> policies() { return policies; }
-
-        StubPrincipal addRole(IPrincipalRoleAssignment ra) { roles.add(ra); return this; }
-        StubPrincipal addPolicy(IPrincipalPolicyAssignment pa) { policies.add(pa); return this; }
-    }
-
-    static class StubRole implements IRole {
-        private final UUID id;
-        private final Set<IRolePolicyAssignment> policies = new HashSet<>();
-
-        StubRole(UUID id) { this.id = id; }
-        @Override public UUID id() { return id; }
-        @Override public Set<IRolePolicyAssignment> policies() { return policies; }
-
-        StubRole addPolicy(IRolePolicyAssignment pa) { policies.add(pa); return this; }
-    }
-
-    static class StubPolicy implements IPolicy {
-        private final UUID id;
-        private final Set<IPolicyStatement> statements = new HashSet<>();
-
-        StubPolicy(UUID id) { this.id = id; }
-        @Override public UUID id() { return id; }
-        @Override public Set<IPolicyStatement> statements() { return statements; }
-
-        StubPolicy addStatement(IPolicyStatement s) { statements.add(s); return this; }
-    }
-
-    static class StubRolePolicyAssignment implements IRolePolicyAssignment {
-        private final IRole role;
-        private final IPolicy policy;
-
-        StubRolePolicyAssignment(IRole role, IPolicy policy) {
-            this.role = role;
-            this.policy = policy;
-        }
-        @Override public IRole role() { return role; }
-        @Override public IPolicy policy() { return policy; }
-    }
-
-    static class StubPrincipalRoleAssignment implements IPrincipalRoleAssignment {
-        private final IPrincipal principal;
-        private final IRole role;
-        private final Instant effective;
-        private final Instant expiration;
-
-        StubPrincipalRoleAssignment(IPrincipal principal, IRole role) {
-            this(principal, role, Instant.EPOCH, Instant.MAX);
-        }
-        StubPrincipalRoleAssignment(IPrincipal principal, IRole role, Instant effective, Instant expiration) {
-            this.principal = principal;
-            this.role = role;
-            this.effective = effective;
-            this.expiration = expiration;
-        }
-        @Override public IPrincipal principal() { return principal; }
-        @Override public IRole role() { return role; }
-        @Override public Instant effective() { return effective; }
-        @Override public Instant expiration() { return expiration; }
-    }
-
-    static class StubPrincipalPolicyAssignment implements IPrincipalPolicyAssignment {
-        private final IPrincipal principal;
-        private final IPolicy policy;
-
-        StubPrincipalPolicyAssignment(IPrincipal principal, IPolicy policy) {
-            this.principal = principal;
-            this.policy = policy;
-        }
-        @Override public IPrincipal principal() { return principal; }
-        @Override public IPolicy policy() { return policy; }
-    }
-
-    static class StubPolicyStatement implements IPolicyStatement {
-        private final IPolicy policy;
-        private final int id;
-        private final PolicyEffect effect;
-        private final Set<String> actions;
-        private final Set<CompiledResourcePath> resources;
-        private final JsonLogicNode condition;
-
-        StubPolicyStatement(IPolicy policy, int id, PolicyEffect effect,
-                            Set<String> actions, Set<CompiledResourcePath> resources,
-                            JsonLogicNode condition) {
-            this.policy = policy;
-            this.id = id;
-            this.effect = effect;
-            this.actions = actions;
-            this.resources = resources;
-            this.condition = condition;
-        }
-        @Override public IPolicy policy() { return policy; }
-        @Override public int id() { return id; }
-        @Override public PolicyEffect effect() { return effect; }
-        @Override public Set<String> actions() { return actions; }
-        @Override public Set<CompiledResourcePath> resources() { return resources; }
-        @Override public JsonLogicNode condition() { return condition; }
-    }
 
     // -----------------------------------------------------------------------
     // Factory helpers
@@ -165,7 +53,7 @@ class ModelSnapshotCompilerTest {
     @Test
     void principalWithNoPoliciesProducesNoPermissionSets() {
         UUID principalId = UUID.randomUUID();
-        StubPrincipal principal = new StubPrincipal(principalId);
+        Principal principal = new Principal(principalId);
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of("svc", Set.of("act"))),
@@ -188,14 +76,14 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service = "iam";
         String actionKey = "CreateUser";
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":" + actionKey),
                 Set.of(resource(service, "account", UUID.randomUUID())),
@@ -203,8 +91,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of(actionKey))),
@@ -232,21 +120,21 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service = "iam";
         String actionKey = "DeleteUser";
 
         CompiledResourcePath res = resource(service, "account", UUID.randomUUID());
 
-        StubPolicyStatement denyStatement = new StubPolicyStatement(
+        PolicyStatement denyStatement = new PolicyStatement(
                 policy, 1, PolicyEffect.DENY,
                 Set.of(service + ":" + actionKey),
                 Set.of(res), null
         );
-        StubPolicyStatement allowStatement = new StubPolicyStatement(
+        PolicyStatement allowStatement = new PolicyStatement(
                 policy, 2, PolicyEffect.ALLOW,
                 Set.of(service + ":" + actionKey),
                 Set.of(res), null
@@ -254,8 +142,8 @@ class ModelSnapshotCompilerTest {
 
         policy.addStatement(denyStatement);
         policy.addStatement(allowStatement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of(actionKey))),
@@ -280,14 +168,14 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service1 = "svc1";
         String service2 = "svc2";
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of("*"),
                 Set.of(resource(service1, "res", UUID.randomUUID())),
@@ -295,8 +183,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service1, Set.of("a", "b"), service2, Set.of("c"))),
@@ -334,14 +222,14 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service1 = "svc1";
         String service2 = "svc2";
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service1 + ":*"),
                 Set.of(resource(service1, "res", UUID.randomUUID())),
@@ -349,8 +237,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service1, Set.of("a", "b"), service2, Set.of("c"))),
@@ -383,13 +271,13 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service = "svc";
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":Create*"),
                 Set.of(resource(service, "res", UUID.randomUUID())),
@@ -397,8 +285,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("CreateUser", "CreateRole", "DeleteUser"))),
@@ -425,13 +313,13 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service = "svc";
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":*User"),
                 Set.of(resource(service, "res", UUID.randomUUID())),
@@ -439,8 +327,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("CreateUser", "DeleteUser", "CreateRole"))),
@@ -466,26 +354,26 @@ class ModelSnapshotCompilerTest {
         UUID principalId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Policy policy = new Policy(policyId);
 
         String service = "svc";
         CompiledResourcePath res = resource(service, "r", UUID.randomUUID());
         String action = service + ":a";
 
         // Two identical statements
-        StubPolicyStatement s1 = new StubPolicyStatement(
+        PolicyStatement s1 = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(action), Set.of(res), null
         );
-        StubPolicyStatement s2 = new StubPolicyStatement(
+        PolicyStatement s2 = new PolicyStatement(
                 policy, 2, PolicyEffect.ALLOW,
                 Set.of(action), Set.of(res), null
         );
 
         policy.addStatement(s1);
         policy.addStatement(s2);
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, policy));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, policy));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("a"))),
@@ -510,19 +398,19 @@ class ModelSnapshotCompilerTest {
         UUID policy1Id = UUID.randomUUID();
         UUID policy2Id = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubPolicy policy1 = new StubPolicy(policy1Id);
-        StubPolicy policy2 = new StubPolicy(policy2Id);
+        Principal principal = new Principal(principalId);
+        Policy policy1 = new Policy(policy1Id);
+        Policy policy2 = new Policy(policy2Id);
 
         String service = "svc";
 
-        StubPolicyStatement s1 = new StubPolicyStatement(
+        PolicyStatement s1 = new PolicyStatement(
                 policy1, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":a"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
                 null
         );
-        StubPolicyStatement s2 = new StubPolicyStatement(
+        PolicyStatement s2 = new PolicyStatement(
                 policy2, 2, PolicyEffect.ALLOW,
                 Set.of(service + ":b"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
@@ -531,8 +419,8 @@ class ModelSnapshotCompilerTest {
 
         policy1.addStatement(s1);
         policy2.addStatement(s2);
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, policy1));
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, policy2));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, policy1));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, policy2));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("a", "b"))),
@@ -562,20 +450,20 @@ class ModelSnapshotCompilerTest {
         UUID rolePolicyId = UUID.randomUUID();
         UUID directPolicyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy rolePolicy = new StubPolicy(rolePolicyId);
-        StubPolicy directPolicy = new StubPolicy(directPolicyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy rolePolicy = new Policy(rolePolicyId);
+        Policy directPolicy = new Policy(directPolicyId);
 
         String service = "svc";
 
-        StubPolicyStatement roleStatement = new StubPolicyStatement(
+        PolicyStatement roleStatement = new PolicyStatement(
                 rolePolicy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":a"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
                 null
         );
-        StubPolicyStatement directStatement = new StubPolicyStatement(
+        PolicyStatement directStatement = new PolicyStatement(
                 directPolicy, 2, PolicyEffect.ALLOW,
                 Set.of(service + ":b"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
@@ -585,9 +473,9 @@ class ModelSnapshotCompilerTest {
         rolePolicy.addStatement(roleStatement);
         directPolicy.addStatement(directStatement);
 
-        role.addPolicy(new StubRolePolicyAssignment(role, rolePolicy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, directPolicy));
+        role.addPolicy(new RolePolicyAssignment(role, rolePolicy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, directPolicy));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("a", "b"))),
@@ -609,9 +497,9 @@ class ModelSnapshotCompilerTest {
         UUID roleId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubRole role = new StubRole(roleId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Role role = new Role(roleId);
+        Policy policy = new Policy(policyId);
 
         String service = "svc";
         String actionKey = "a";
@@ -619,7 +507,7 @@ class ModelSnapshotCompilerTest {
         JsonLogicNode condition = new JsonLogicOperation("==",
                 new JsonLogicArray(List.of(new JsonLogicNumber(1), new JsonLogicNumber(1))));
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":" + actionKey),
                 Set.of(resource(service, "r", UUID.randomUUID())),
@@ -627,8 +515,8 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        role.addPolicy(new StubRolePolicyAssignment(role, policy));
-        principal.addRole(new StubPrincipalRoleAssignment(principal, role));
+        role.addPolicy(new RolePolicyAssignment(role, policy));
+        principal.addRole(new PrincipalRoleAssignment(principal, role));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of(actionKey))),
@@ -654,20 +542,20 @@ class ModelSnapshotCompilerTest {
         UUID policy1Id = UUID.randomUUID();
         UUID policy2Id = UUID.randomUUID();
 
-        StubPrincipal principal1 = new StubPrincipal(principal1Id);
-        StubPrincipal principal2 = new StubPrincipal(principal2Id);
-        StubPolicy policy1 = new StubPolicy(policy1Id);
-        StubPolicy policy2 = new StubPolicy(policy2Id);
+        Principal principal1 = new Principal(principal1Id);
+        Principal principal2 = new Principal(principal2Id);
+        Policy policy1 = new Policy(policy1Id);
+        Policy policy2 = new Policy(policy2Id);
 
         String service = "svc";
 
-        StubPolicyStatement s1 = new StubPolicyStatement(
+        PolicyStatement s1 = new PolicyStatement(
                 policy1, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":a"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
                 null
         );
-        StubPolicyStatement s2 = new StubPolicyStatement(
+        PolicyStatement s2 = new PolicyStatement(
                 policy2, 2, PolicyEffect.ALLOW,
                 Set.of(service + ":b"),
                 Set.of(resource(service, "r", UUID.randomUUID())),
@@ -676,8 +564,8 @@ class ModelSnapshotCompilerTest {
 
         policy1.addStatement(s1);
         policy2.addStatement(s2);
-        principal1.addPolicy(new StubPrincipalPolicyAssignment(principal1, policy1));
-        principal2.addPolicy(new StubPrincipalPolicyAssignment(principal2, policy2));
+        principal1.addPolicy(new PrincipalPolicyAssignment(principal1, policy1));
+        principal2.addPolicy(new PrincipalPolicyAssignment(principal2, policy2));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("a", "b"))),
@@ -744,13 +632,13 @@ class ModelSnapshotCompilerTest {
         UUID principalId = UUID.randomUUID();
         UUID policyId = UUID.randomUUID();
 
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubPolicy policy = new StubPolicy(policyId);
+        Principal principal = new Principal(principalId);
+        Policy policy = new Policy(policyId);
 
         String service = "svc";
         CompiledResourcePath res = resource(service, "r", UUID.randomUUID());
 
-        StubPolicyStatement statement = new StubPolicyStatement(
+        PolicyStatement statement = new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of(service + ":a", service + ":b"),
                 Set.of(res),
@@ -758,7 +646,7 @@ class ModelSnapshotCompilerTest {
         );
 
         policy.addStatement(statement);
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, policy));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, policy));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of(service, Set.of("a", "b", "c"))),
@@ -786,15 +674,15 @@ class ModelSnapshotCompilerTest {
     @Test
     void compileCanBeCalledMultipleTimes() {
         UUID principalId = UUID.randomUUID();
-        StubPrincipal principal = new StubPrincipal(principalId);
-        StubPolicy policy = new StubPolicy(UUID.randomUUID());
-        policy.addStatement(new StubPolicyStatement(
+        Principal principal = new Principal(principalId);
+        Policy policy = new Policy(UUID.randomUUID());
+        policy.addStatement(new PolicyStatement(
                 policy, 1, PolicyEffect.ALLOW,
                 Set.of("svc:a"),
                 Set.of(resource("svc", "r", UUID.randomUUID())),
                 null
         ));
-        principal.addPolicy(new StubPrincipalPolicyAssignment(principal, policy));
+        principal.addPolicy(new PrincipalPolicyAssignment(principal, policy));
 
         ModelSnapshotCompiler compiler = new ModelSnapshotCompiler(
                 ServiceDirectory.from(Map.of("svc", Set.of("a"))),

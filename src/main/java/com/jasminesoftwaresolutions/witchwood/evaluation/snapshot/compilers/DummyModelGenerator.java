@@ -1,5 +1,6 @@
 package com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers;
 
+import com.jasminesoftwaresolutions.witchwood.entities.*;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.EvaluationSnapshot;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.PermissionSetSnapshot;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.PermissionSnapshot;
@@ -9,7 +10,6 @@ import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.Reso
 import com.jasminesoftwaresolutions.witchwood.models.*;
 import io.github.jamsesso.jsonlogic.ast.*;
 
-import java.time.Instant;
 import java.util.*;
 
 /**
@@ -498,82 +498,6 @@ public class DummyModelGenerator {
 
     /** Internal pairing of a query with its expected effect. */
     private record QueryWithEffect(QueryPools.Query query, boolean isAllow) {}
-
-    // ---- inner model classes ---------------------------------------------
-
-    static class Principal implements IPrincipal {
-        private final UUID id;
-        private final Set<IPrincipalRoleAssignment> roles = new LinkedHashSet<>();
-        private final Set<IPrincipalPolicyAssignment> policies = new LinkedHashSet<>();
-
-        Principal(UUID id) { this.id = id; }
-
-        @Override public UUID id() { return id; }
-        @Override public Set<IPrincipalRoleAssignment> roles() { return roles; }
-        @Override public Set<IPrincipalPolicyAssignment> policies() { return policies; }
-
-        Principal addRole(IPrincipalRoleAssignment role) { roles.add(role); return this; }
-        Principal addPolicy(IPrincipalPolicyAssignment policy) { policies.add(policy); return this; }
-    }
-
-    static class Role implements IRole {
-        private final UUID id;
-        private final Set<IRolePolicyAssignment> policies = new LinkedHashSet<>();
-
-        Role(UUID id) { this.id = id; }
-
-        @Override public UUID id() { return id; }
-        @Override public Set<IRolePolicyAssignment> policies() { return policies; }
-
-        Role addPolicy(IRolePolicyAssignment policy) { policies.add(policy); return this; }
-    }
-
-    static class Policy implements IPolicy {
-        private final UUID id;
-        private final Set<IPolicyStatement> statements = new LinkedHashSet<>();
-
-        Policy(UUID id) { this.id = id; }
-
-        @Override public UUID id() { return id; }
-        @Override public Set<IPolicyStatement> statements() { return statements; }
-
-        Policy addStatement(IPolicyStatement statement) { statements.add(statement); return this; }
-    }
-
-    record RolePolicyAssignment(IRole role, IPolicy policy) implements IRolePolicyAssignment {}
-
-    record PrincipalRoleAssignment(IPrincipal principal, IRole role) implements IPrincipalRoleAssignment {
-        @Override public Instant effective() { return Instant.EPOCH; }
-        @Override public Instant expiration() { return Instant.MAX; }
-    }
-
-    record PrincipalPolicyAssignment(IPrincipal principal, IPolicy policy) implements IPrincipalPolicyAssignment {}
-
-    static class PolicyStatement implements IPolicyStatement {
-        private final IPolicy policy;
-        private final int id;
-        private final PolicyEffect effect;
-        private final Set<String> actions;
-        private final Set<CompiledResourcePath> resources;
-        private final JsonLogicNode condition;
-
-        PolicyStatement(IPolicy policy, int id, PolicyEffect effect, Set<String> actions,
-                        Set<CompiledResourcePath> resources, JsonLogicNode condition) {
-            this.policy = policy;
-            this.id = id;
-            this.effect = effect;
-            this.actions = actions;
-            this.resources = resources;
-            this.condition = condition;
-        }
-
-        @Override public IPolicy policy() { return policy; }
-        @Override public int id() { return id; }
-        @Override public PolicyEffect effect() { return effect; }
-        @Override public Set<String> actions() { return actions; }
-        @Override public Set<CompiledResourcePath> resources() { return resources; }
-        @Override public JsonLogicNode condition() { return condition; }
-    }
 
     // ---- query pools -----------------------------------------------------
 
