@@ -26,12 +26,17 @@ public class EvaluationSnapshot {
     }
 
     public static class Builder {
-        protected final ServiceDirectory.Builder serviceDirectory = new ServiceDirectory.Builder();
+        protected ServiceDirectory.Builder serviceDirectory = new ServiceDirectory.Builder();
         protected final PrincipalDirectory.Builder principalDirectory = new PrincipalDirectory.Builder();
         protected final PermissionsTable.Builder permissionsTable = new PermissionsTable.Builder();
 
         public ServiceDirectory.Builder serviceDirectory() {
             return serviceDirectory;
+        }
+
+        public Builder serviceDirectory(ServiceDirectory serviceDirectory) {
+            this.serviceDirectory = ServiceDirectory.Builder.from(serviceDirectory);
+            return this;
         }
 
         public PrincipalDirectory.Builder principalDirectory() {

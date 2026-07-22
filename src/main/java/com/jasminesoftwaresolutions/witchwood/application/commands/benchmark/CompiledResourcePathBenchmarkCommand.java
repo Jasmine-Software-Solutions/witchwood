@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
         description = "Runs a benchmark on the resource path compiler with dummy data",
         mixinStandardHelpOptions = true)
 public class CompiledResourcePathBenchmarkCommand implements Runnable {
-    @Option(names = "--fork", defaultValue = "2")
+    @Option(names = "--forks", defaultValue = "2")
     protected int forks;
 
     @Option(names = "--warmup-iterations", defaultValue = "5")

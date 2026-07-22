@@ -1,15 +1,12 @@
 package com.jasminesoftwaresolutions.witchwood.application.benchmarks;
 
-import com.jasminesoftwaresolutions.witchwood.evaluation.EvaluationEngine;
-import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.EvaluationSnapshot;
-import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers.DummySnapshotCompiler;
-import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers.DummySnapshotCompilerBuilder;
+import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers.DummyModelGenerator;
+import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers.DummyModelGeneratorBuilder;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.ResourcePathCompiler;
-import com.jasminesoftwaresolutions.witchwood.util.JsonLogicEvaluators;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
-import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @State(Scope.Benchmark)
 public class CompiledResourcePathBenchmark {
@@ -22,45 +19,37 @@ public class CompiledResourcePathBenchmark {
     @Param({ "60" })
     protected int numResourceTypes;
 
-    protected EvaluationSnapshot snapshot;
     protected String[] resources;
-
-    protected EvaluationEngine engine;
-    protected Random random;
 
     @Setup(Level.Trial)
     public void setup() {
-        System.out.println("Creating dummy snapshot, this may take a while...");
-        long start = System.currentTimeMillis();
-
-        DummySnapshotCompiler compiler = new DummySnapshotCompilerBuilder()
+        DummyModelGenerator generator = new DummyModelGeneratorBuilder()
                 .setNumPrincipals(0)
                 .setNumResources(numResources)
-                .setNumPermissionSets(0)
-                .setNumPermissionSetsPerPrincipal(0)
+                .setNumResourceTypes(numResourceTypes)
+                .setNumNodesPerResource(numNodesPerResourcePattern)
                 .setNumServices(1)
-                .setNumActionsPerService(60)
-                .setNumStatementsPerPermissionSet(0)
+                .setNumActionsPerService(1)
+                .setNumHotRoles(0)
+                .setNumHotDirectPolicies(0)
+                .setNumRolesPerPrincipal(0)
+                .setNumDirectPoliciesPerPrincipal(0)
+                .setNumPoliciesPerRole(0)
+                .setNumStatementsPerPolicy(0)
                 .setNumActionsPerStatement(0)
-                .setNumResourcePatternsPerStatement(0)
+                .setNumResourcesPerStatement(0)
+                .setNumHotActions(0)
+                .setNumHotResources(0)
                 .setNumOperationsPerCondition(0)
                 .setNumVariablesPerEvaluation(0)
-                .setNumNodesPerResourcePattern(numNodesPerResourcePattern)
-                .setNumResourceTypesPerService(numResourceTypes)
-                .setStatementToConditionRatio(0)
-                .setAllowToDenyEffectRatio(0)
-                .build().compile();
+                .build()
+                .generate();
 
-        long duration = System.currentTimeMillis() - start;
-        System.out.println("Done creating snapshot in " + (duration / 1000) + " seconds.");
-
-        random = new Random();
-        resources = compiler.resources().toArray(new String[0]);
-        engine = new EvaluationEngine(snapshot, JsonLogicEvaluators.withAllExpressions());
+        resources = generator.resources().toArray(new String[0]);
     }
 
     @Benchmark
     public void compileResource(Blackhole bh) {
-        bh.consume(ResourcePathCompiler.compileResource(resources[random.nextInt(resources.length)]));
+        bh.consume(ResourcePathCompiler.compileResource(resources[ThreadLocalRandom.current().nextInt(resources.length)]));
     }
 }
