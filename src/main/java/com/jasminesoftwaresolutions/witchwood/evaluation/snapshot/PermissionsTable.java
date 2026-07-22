@@ -1,7 +1,6 @@
 package com.jasminesoftwaresolutions.witchwood.evaluation.snapshot;
 
 import com.jasminesoftwaresolutions.witchwood.util.ArrayView;
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,25 +30,33 @@ public class PermissionsTable {
     }
 
     public static class Builder {
-        protected final Int2ObjectArrayMap<List<PermissionSetSnapshot>> permissions = new Int2ObjectArrayMap<>();
-
-        protected int maxPrincipalId = Integer.MIN_VALUE;
+        /**
+         * PermissionSetSnapshots for each principal, indexed by principal ID.
+         * Principals are assigned sequential IDs (0, 1, 2, ...) so a flat
+         * {@link ArrayList} indexed by ID provides O(1) access.
+         */
+        protected final List<List<PermissionSetSnapshot>> permissionsByPrincipal = new ArrayList<>();
         protected int size = 0;
 
         public Builder addPermissions(int principalId, PermissionSetSnapshot permissions) {
-            if (principalId > maxPrincipalId)
-                maxPrincipalId = principalId;
+            // Grow the list to accommodate the principal ID if needed
+            while (permissionsByPrincipal.size() <= principalId)
+                permissionsByPrincipal.add(null);
 
-            final List<PermissionSetSnapshot> permissionSets = this.permissions.getOrDefault(principalId, new ArrayList<>());
+            List<PermissionSetSnapshot> permissionSets = permissionsByPrincipal.get(principalId);
+            if (permissionSets == null) {
+                permissionSets = new ArrayList<>();
+                permissionsByPrincipal.set(principalId, permissionSets);
+            }
+
             permissionSets.add(permissions);
             size++;
 
-            this.permissions.put(principalId, permissionSets);
             return this;
         }
 
         public PermissionsTable build() {
-            final int offsetLen = maxPrincipalId >= 0 ? maxPrincipalId + 1 : 0;
+            final int offsetLen = permissionsByPrincipal.size();
             final int[] offset = new int[offsetLen];
             final PermissionSetSnapshot[] permissions = new PermissionSetSnapshot[size];
 
@@ -57,11 +64,8 @@ public class PermissionsTable {
             int currentPermission = 0;
 
             for (int i = 0; i < offsetLen; i++) {
-                final List<PermissionSetSnapshot> subset = this.permissions.get(i);
+                final List<PermissionSetSnapshot> subset = permissionsByPrincipal.get(i);
                 if (subset == null) {
-                    // Record the current offset so the next non-null principal starts
-                    // correctly, and so a principal with no PermissionSets returns
-                    // an empty view (start == end).
                     offset[i] = currentOffset;
                     continue;
                 }
