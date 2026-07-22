@@ -8,7 +8,8 @@ import picocli.CommandLine.Command;
         subcommands = {
                 CompiledResourcePathBenchmarkCommand.class,
                 EvaluationEngineBenchmarkCommand.class,
-                ModelSnapshotCompilerBenchmarkCommand.class
+                ModelSnapshotCompilerBenchmarkCommand.class,
+                PersistedSnapshotCompilerBenchmarkCommand.class
         })
 public class BenchmarkCommand implements Runnable {
     @Override

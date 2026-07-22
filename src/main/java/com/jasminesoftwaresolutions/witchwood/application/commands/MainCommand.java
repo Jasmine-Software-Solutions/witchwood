@@ -7,7 +7,8 @@ import picocli.CommandLine.Command;
     name = "witchwood",
     mixinStandardHelpOptions = true,
     subcommands = {
-        BenchmarkCommand.class
+        BenchmarkCommand.class,
+        DumpDummyModelCommand.class
     })
 public class MainCommand implements Runnable {
     @Override

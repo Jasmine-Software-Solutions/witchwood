@@ -12,7 +12,6 @@ import java.util.List;
 
 @State(Scope.Benchmark)
 public class ModelSnapshotCompilerBenchmark {
-
     @Param({ "1000000" })
     protected int numPrincipals;
 
