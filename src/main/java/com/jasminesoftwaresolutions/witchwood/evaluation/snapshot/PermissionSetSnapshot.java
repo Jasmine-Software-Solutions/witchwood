@@ -1,5 +1,11 @@
 package com.jasminesoftwaresolutions.witchwood.evaluation.snapshot;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class PermissionSetSnapshot {
     protected final PermissionSnapshot[] permissions;
 
@@ -15,20 +21,24 @@ public class PermissionSetSnapshot {
     }
 
     public static class Builder {
-        protected PermissionSnapshot[] permissions = new PermissionSnapshot[4096];
-        int maxActionId = Integer.MIN_VALUE;
+        protected final IntList actionIds = new IntArrayList();
+        protected final List<PermissionSnapshot> permissions = new ArrayList<>();
+        protected int maxActionId = Integer.MIN_VALUE;
 
         public Builder addPermission(int actionId, PermissionSnapshot permission) {
             if (actionId > maxActionId)
                 maxActionId = actionId;
 
-            permissions[actionId] = permission;
+            actionIds.add(actionId);
+            permissions.add(permission);
             return this;
         }
 
         public PermissionSetSnapshot build() {
             final PermissionSnapshot[] permissions = new PermissionSnapshot[maxActionId + 1];
-            System.arraycopy(this.permissions, 0, permissions, 0, permissions.length);
+
+            for (int i = 0; i < actionIds.size(); i++)
+                permissions[actionIds.getInt(i)] = this.permissions.get(i);
 
             return new PermissionSetSnapshot(permissions);
         }
