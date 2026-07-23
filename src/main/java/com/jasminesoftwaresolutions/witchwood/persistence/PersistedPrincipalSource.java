@@ -1,6 +1,7 @@
 package com.jasminesoftwaresolutions.witchwood.persistence;
 
 import com.jasminesoftwaresolutions.witchwood.entities.*;
+import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.ServiceDirectory;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
 import com.jasminesoftwaresolutions.witchwood.models.*;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicNode;
@@ -23,13 +24,14 @@ import static org.jooq.impl.DSL.*;
  * merge-join — no large lists are materialized in memory.</p>
  */
 public class PersistedPrincipalSource implements PrincipalSource {
-
+    private final ServiceDirectory serviceDirectory;
     private final DSLContext db;
     private final Instant asOf;
     private final Map<UUID, Policy> policies;
     private final Map<UUID, Role> roles;
 
     public PersistedPrincipalSource(DSLContext db, Instant asOf) {
+        this.serviceDirectory = loadServiceDirectory();
         this.db = Objects.requireNonNull(db);
         this.asOf = Objects.requireNonNull(asOf);
         this.policies = loadAllPolicies();
@@ -90,6 +92,10 @@ public class PersistedPrincipalSource implements PrincipalSource {
         }
     }
 
+    public ServiceDirectory serviceDirectory() {
+        return serviceDirectory;
+    }
+
     private static <R extends org.jooq.Record> R advance(Iterator<R> iter) {
         return iter.hasNext() ? iter.next() : null;
     }
@@ -115,6 +121,30 @@ public class PersistedPrincipalSource implements PrincipalSource {
         Policy policy = policies.get(row.get(1, UUID.class));
         if (policy != null)
             principal.addPolicy(new PrincipalPolicyAssignment(principal, policy));
+    }
+
+    private ServiceDirectory loadServiceDirectory() {
+        ServiceDirectory.Builder builder = new ServiceDirectory.Builder();
+
+        for (var r : db.select(field("id", UUID.class), field("name", String.class))
+                .from(table("services")).fetch()) {
+            UUID serviceId = r.get(0, UUID.class);
+            String serviceName = r.get(1, String.class);
+            builder.addServicePrincipal(serviceName, serviceId);
+        }
+
+        for (var r : db.select(
+                field("name", String.class), field("action", String.class))
+                .from(table("service_actions"))
+                .join(table("services"))
+                .on(field("service_actions.service_id", UUID.class).eq(field("services.id", UUID.class)))
+                .orderBy(field("name"), field("action")).fetch()) {
+            String serviceName = r.get(0, String.class);
+            String actionKey = r.get(1, String.class);
+            builder.addAction(serviceName + ":" + actionKey);
+        }
+
+        return builder.build();
     }
 
     private Map<UUID, Policy> loadAllPolicies() {

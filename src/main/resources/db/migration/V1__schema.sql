@@ -1,3 +1,16 @@
+CREATE TABLE IF NOT EXISTS services (
+    id UUID PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS service_actions (
+    service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    PRIMARY KEY (service_id, action)
+);
+CREATE INDEX IF NOT EXISTS idx_service_actions_action
+    ON service_actions(action);
+
 CREATE TABLE IF NOT EXISTS principals (
     id UUID PRIMARY KEY
 );

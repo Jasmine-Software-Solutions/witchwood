@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.ServiceDirectory;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.compilers.DummyModelGenerator;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
 import com.jasminesoftwaresolutions.witchwood.models.*;
@@ -30,9 +31,43 @@ public class DummyModelDumper {
     public void dump(DummyModelGenerator generator) {
         var principals = generator.principalObjects();
 
+        dumpServices(generator.serviceDirectory());
         dumpPolicies(principals);
         dumpRoles(principals);
         dumpPrincipals(principals);
+    }
+
+    private void dumpServices(ServiceDirectory sd) {
+        try (var psService = conn.prepareStatement(
+                "INSERT INTO services (id, name) VALUES (?, ?)");
+             var psAction = conn.prepareStatement(
+                     "INSERT INTO service_actions (service_id, action) VALUES (?, ?)")) {
+
+            Set<String> serviceNames = sd.servicePrincipals();
+            for (String serviceName : serviceNames) {
+                UUID serviceId = sd.principalId(serviceName);
+                psService.setObject(1, serviceId);
+                psService.setString(2, serviceName);
+                psService.addBatch();
+            }
+
+            for (String fullAction : sd.actions()) {
+                int colonIdx = fullAction.indexOf(':');
+                if (colonIdx < 0) continue;
+                String serviceName = fullAction.substring(0, colonIdx);
+                String actionKey = fullAction.substring(colonIdx + 1);
+                UUID serviceId = sd.principalId(serviceName);
+                if (serviceId == null) continue;
+                psAction.setObject(1, serviceId);
+                psAction.setString(2, actionKey);
+                psAction.addBatch();
+            }
+
+            psService.executeBatch();
+            psAction.executeBatch();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to dump services", e);
+        }
     }
 
     private void dumpPolicies(List<IPrincipal> principals) {

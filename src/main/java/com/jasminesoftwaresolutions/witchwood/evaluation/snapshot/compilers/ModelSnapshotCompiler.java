@@ -7,6 +7,8 @@ import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.PolicyStatemen
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.ServiceDirectory;
 import com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resources.CompiledResourcePath;
 import com.jasminesoftwaresolutions.witchwood.models.*;
+import com.jasminesoftwaresolutions.witchwood.persistence.PersistedPrincipalSource;
+import org.jooq.DSLContext;
 
 import java.time.Instant;
 import java.util.*;
@@ -23,6 +25,9 @@ import java.util.*;
  *   <li>{@link #ModelSnapshotCompiler(ServiceDirectory, PrincipalSource, Instant)} —
  *       streams principals from a backing store, filters role assignments by
  *       {@code asOf}, and never materializes the full principal set.</li>
+ *   <li>{@link #fromDatabase(DSLContext, Instant)} —
+ *       loads both the service directory and principal stream from a
+ *       PostgreSQL database via jOOQ, suitable for production usage.</li>
  * </ul>
  *
  * <h3>Temporal filtering</h3>
@@ -88,6 +93,22 @@ public class ModelSnapshotCompiler {
         this.serviceDirectory = serviceDirectory;
         this.principalSource = principalSource;
         this.asOf = Objects.requireNonNull(asOf);
+    }
+
+    /**
+     * Create a compiler fully backed by a PostgreSQL database.
+     *
+     * <p>Loads the service directory and streams principals from the database
+     * via {@link PersistedPrincipalSource}, applying temporal filtering at
+     * {@code asOf}.</p>
+     *
+     * @param db   jOOQ DSL context for the database
+     * @param asOf reference timestamp for role-assignment filtering;
+     *             use {@link Instant#MAX} to disable filtering
+     */
+    public static ModelSnapshotCompiler fromDatabase(DSLContext db, Instant asOf) {
+        var source = new PersistedPrincipalSource(db, asOf);
+        return new ModelSnapshotCompiler(source.serviceDirectory(), source, asOf);
     }
 
     public EvaluationSnapshot snapshot() {
