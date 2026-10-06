@@ -15,9 +15,19 @@ public class CompiledResourcePath {
     private static final String WILDCARD_STRING = String.valueOf(WILDCARD);
     private static final String GREEDY_WILDCARD_STRING = WILDCARD_STRING + WILDCARD_STRING;
 
+    /**
+     * Sentinel value indicating "matches any service." A {@code null}
+     * service on a resource path pattern is treated equivalently.
+     */
+    public static final String ANY_SERVICE = "*";
+
     protected final String service;
     protected final Node root;
 
+    /**
+     * Construct a resource path. When {@code service} is {@code null} or
+     * {@link #ANY_SERVICE}, the path matches any service.
+     */
     public CompiledResourcePath(String service, Node root) {
         this.service = service;
         this.root = root;
@@ -25,6 +35,14 @@ public class CompiledResourcePath {
 
     public String service() {
         return service;
+    }
+
+    /**
+     * Returns {@code true} if this pattern matches any service (service is
+     * {@code null} or {@link #ANY_SERVICE}).
+     */
+    public boolean matchesAnyService() {
+        return service == null || ANY_SERVICE.equals(service);
     }
 
     public Node root() {
@@ -51,12 +69,15 @@ public class CompiledResourcePath {
     }
 
     public static final class Builder {
-        private String service;
+        private String service = ANY_SERVICE;
         private final List<NodeDescriptor> descriptors = new ArrayList<>();
 
         private Builder() {}
 
-        /** Set the service name. Required before {@link #build()}. */
+        /**
+         * Set the service name. If never called, the built path will match
+         * any service (equivalent to {@code *}).
+         */
         public Builder service(String service) {
             this.service = Objects.requireNonNull(service);
             return this;
@@ -111,13 +132,10 @@ public class CompiledResourcePath {
          * order: the first call to {@code one()} or {@code any()} becomes
          * the root, and subsequent calls become its children.
          *
-         * @throws IllegalStateException if {@link #service(String)} was
-         *         never called
+         * <p>If {@link #service(String)} was never called, the built path
+         * matches any service (equivalent to {@code *://}).</p>
          */
         public CompiledResourcePath build() {
-            if (service == null)
-                throw new IllegalStateException("service must be set before build()");
-
             Node root = null;
             // Build in reverse: the last descriptor is the deepest node
             // (child == null), and each predecessor wraps it.
@@ -145,7 +163,7 @@ public class CompiledResourcePath {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof CompiledResourcePath that)) return false;
-        if (!service.equals(that.service)) return false;
+        if (!Objects.equals(service, that.service)) return false;
         return nodesEqual(root, that.root);
     }
 
@@ -158,7 +176,7 @@ public class CompiledResourcePath {
 
     @Override
     public int hashCode() {
-        int result = service.hashCode();
+        int result = Objects.hashCode(service);
         Node node = root;
         while (node != null) {
             result = 31 * result + node.hashCode();
@@ -169,7 +187,8 @@ public class CompiledResourcePath {
 
     @Override
     public String toString() {
-        final String start = service + SERVICE_SEPARATOR;
+        final String serviceStr = matchesAnyService() ? ANY_SERVICE : service;
+        final String start = serviceStr + SERVICE_SEPARATOR;
         if (root == null)
             return start;
 

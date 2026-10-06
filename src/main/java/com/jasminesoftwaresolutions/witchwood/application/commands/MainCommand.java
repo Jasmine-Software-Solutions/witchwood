@@ -8,7 +8,8 @@ import picocli.CommandLine.Command;
     mixinStandardHelpOptions = true,
     subcommands = {
         BenchmarkCommand.class,
-        DumpDummyModelCommand.class
+        DumpDummyModelCommand.class,
+        ServeCommand.class
     })
 public class MainCommand implements Runnable {
     @Override

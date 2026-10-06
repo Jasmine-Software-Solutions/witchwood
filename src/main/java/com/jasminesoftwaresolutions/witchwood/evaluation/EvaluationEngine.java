@@ -33,38 +33,51 @@ public class EvaluationEngine {
         this.snapshot.set(snapshot);
     }
 
-    public boolean evaluate(final Object principal, final String action, final String resource, final Map<String, Object> context) {
+    public EvaluationSnapshot snapshot() {
+        return this.snapshot.get();
+    }
+
+    public boolean evaluate(final UUID principal, final String action, final String resource, final Map<String, Object> context) {
         CompiledResourcePath resourcePath = compiledResourcePaths.computeIfAbsent(
                 resource, ResourcePathCompiler::compileResource);
 
         return evaluate(principal, action, resourcePath, context);
     }
 
-    public boolean evaluate(final Object principal, final String action, final CompiledResourcePath compiledResource, final Map<String, Object> context) {
+    public boolean evaluate(final UUID principal, final String action, final CompiledResourcePath compiledResource, final Map<String, Object> context) {
+        System.out.println("Evaluating ");
+        System.out.println("Principal: " + principal);
+        System.out.println("Action: " + action);
+        System.out.println("Resource: " + compiledResource);
         final EvaluationSnapshot snapshot = this.snapshot.get();
 
-        int principalId;
-        if (principal instanceof UUID)
-            principalId = snapshot.principalDirectory().principalId((UUID) principal);
-        else if (principal instanceof String) {
-            UUID servicePrincipalId = snapshot.serviceDirectory().principalId((String) principal);
-            principalId = snapshot.principalDirectory().principalId(servicePrincipalId);
-        } else throw new IllegalArgumentException("Principal must be a UUID or String");
+        final int principalId = snapshot.principalDirectory().principalId(principal);
+        if (principalId == -1)
+            return false;
 
-        if (principalId == -1) return false;
+        System.out.println("A");
 
         int actionId = snapshot.serviceDirectory().actionId(action);
-        if (actionId == -1) return false;
+        if (actionId == -1)
+            return false;
 
+        System.out.println("B");
+
+        DefaultEvaluationContext.write(principal, action, compiledResource, context);
         return evaluate(snapshot, principalId, actionId, compiledResource, context);
     }
 
     protected boolean evaluate(final EvaluationSnapshot snapshot, final int principalId, final int actionId, final CompiledResourcePath compiledResource, final Map<String, Object> context) {
         final ArrayView<PermissionSetSnapshot> permissionSets = snapshot.permissionsTable().permissions(principalId);
+        System.out.println("PrincipalId: " + principalId + ", ActionId: " + actionId + ", PermissionSets: " + (permissionSets.end() - permissionSets.start()));
 
         for (int i = permissionSets.start(); i < permissionSets.end(); i++) {
             final PermissionSetSnapshot permissionSet = permissionSets.array()[i];
             final PermissionSnapshot permissions = permissionSet.permission(actionId);
+            System.out.println("  PS[" + i + "]: permission for actionId=" + actionId + " = " + (permissions != null));
+            if (permissions != null) {
+                System.out.println("    allowStmt count=" + permissions.allowStatements().length + ", denyStmt count=" + permissions.denyStatements().length);
+            }
             if (permissions == null) continue;
 
             PolicyStatementSnapshot[] deny = permissions.denyStatements();
@@ -93,11 +106,14 @@ public class EvaluationEngine {
         boolean matches = false;
         for (CompiledResourcePath pattern : statement.resources()) {
             matches = ResourcePathMatcher.matches(pattern, compiledResource);
+            System.out.println("    resource match: pattern=" + pattern + " resource=" + compiledResource + " matches=" + matches);
             if (matches) break;
         }
 
-        if (!matches)
+        if (!matches) {
+            System.out.println("    -> no resource match, returning false");
             return false;
+        }
 
         JsonLogicNode condition = statement.condition();
         if (condition == null)

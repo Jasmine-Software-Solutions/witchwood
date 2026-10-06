@@ -4,7 +4,8 @@ import static com.jasminesoftwaresolutions.witchwood.evaluation.snapshot.resourc
 
 public class ResourcePathMatcher {
     public static boolean matches(CompiledResourcePath pattern, CompiledResourcePath resource) {
-        if (!pattern.service().equals(resource.service()))
+        if (!pattern.matchesAnyService()
+                && !pattern.service().equals(resource.service()))
             return false;
 
         return matchesNode(pattern.root(), resource.root());

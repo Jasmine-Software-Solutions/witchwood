@@ -15,7 +15,7 @@ public class PermissionsTable {
     }
 
     public ArrayView<PermissionSetSnapshot> permissions(int principalId) {
-        if (offset.length == 0)
+        if (principalId >= offset.length || offset.length == 0)
             return new ArrayView<>(permissions, 0, 0);
 
         int nextPrincipalId = principalId + 1;

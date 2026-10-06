@@ -154,8 +154,20 @@ class CompiledResourcePathBuilderTest {
     }
 
     @Test
-    void buildWithoutServiceThrows() {
-        assertThrows(IllegalStateException.class, () ->
-                CompiledResourcePath.builder().build());
+    void buildWithoutServiceCreatesAnyServiceWildcard() {
+        var path = CompiledResourcePath.builder().build();
+        assertTrue(path.matchesAnyService());
+        assertNull(path.root());
+        assertEquals("*://", path.toString());
+    }
+
+    @Test
+    void buildWithoutServiceWithNodes() {
+        var path = CompiledResourcePath.builder()
+                .any(true)
+                .build();
+        assertTrue(path.matchesAnyService());
+        assertNotNull(path.root());
+        assertEquals("*://**", path.toString());
     }
 }

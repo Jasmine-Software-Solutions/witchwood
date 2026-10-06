@@ -35,7 +35,7 @@ public class PermissionSetSnapshot {
         }
 
         public PermissionSetSnapshot build() {
-            final PermissionSnapshot[] permissions = new PermissionSnapshot[maxActionId + 1];
+            final PermissionSnapshot[] permissions = new PermissionSnapshot[Math.max(maxActionId + 1, 0)];
 
             for (int i = 0; i < actionIds.size(); i++)
                 permissions[actionIds.getInt(i)] = this.permissions.get(i);

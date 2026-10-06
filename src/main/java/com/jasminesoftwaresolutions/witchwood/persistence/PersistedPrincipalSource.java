@@ -31,11 +31,30 @@ public class PersistedPrincipalSource implements PrincipalSource {
     private final Map<UUID, Role> roles;
 
     public PersistedPrincipalSource(DSLContext db, Instant asOf) {
-        this.serviceDirectory = loadServiceDirectory();
         this.db = Objects.requireNonNull(db);
         this.asOf = Objects.requireNonNull(asOf);
+        this.serviceDirectory = loadServiceDirectory();
         this.policies = loadAllPolicies();
         this.roles = loadAllRoles();
+    }
+
+    /**
+     * Compare two UUIDs using unsigned 128-bit ordering, matching PostgreSQL's
+     * default UUID sort order.
+     *
+     * <p>Java's {@link UUID#compareTo} uses signed long comparison, which places
+     * UUIDs with the MSB high-bit set before those without it. PostgreSQL sorts
+     * UUIDs by their byte values (network/big-endian), which is an unsigned
+     * comparison. This helper bridges the gap.</p>
+     *
+     * @return negative if a &lt; b, zero if equal, positive if a &gt; b
+     */
+    private static int compareUUIDUnsigned(UUID a, UUID b) {
+        long aMsb = a.getMostSignificantBits();
+        long bMsb = b.getMostSignificantBits();
+        int cmp = Long.compareUnsigned(aMsb, bMsb);
+        if (cmp != 0) return cmp;
+        return Long.compareUnsigned(a.getLeastSignificantBits(), b.getLeastSignificantBits());
     }
 
     @Override
@@ -69,24 +88,28 @@ public class PersistedPrincipalSource implements PrincipalSource {
                 UUID principalId = principalRecord.get(0, UUID.class);
                 var principal = new Principal(principalId);
 
+                System.out.println("Processing principal " + principalId + ", nextRa=" + (nextRa != null ? nextRa.get(0, UUID.class) : "null"));
                 while (nextRa != null) {
                     UUID raPid = nextRa.get(0, UUID.class);
-                    int cmp = raPid.compareTo(principalId);
-                    if (cmp < 0) { nextRa = advance(raIter); continue; }
-                    if (cmp > 0) break;
+                    int cmp = compareUUIDUnsigned(raPid, principalId);
+                    System.out.println("  ra cmp " + raPid + " vs " + principalId + " = " + cmp + " (msb=" + Long.toHexString(raPid.getMostSignificantBits()) + " vs " + Long.toHexString(principalId.getMostSignificantBits()) + ")");
+                    if (cmp < 0) { System.out.println("  -> advance ra"); nextRa = advance(raIter); continue; }
+                    if (cmp > 0) { System.out.println("  -> break"); break; }
+                    System.out.println("  -> MATCH!");
                     attachRole(principal, nextRa);
                     nextRa = advance(raIter);
                 }
 
                 while (nextPa != null) {
                     UUID paPid = nextPa.get(0, UUID.class);
-                    int cmp = paPid.compareTo(principalId);
+                    int cmp = compareUUIDUnsigned(paPid, principalId);
                     if (cmp < 0) { nextPa = advance(paIter); continue; }
                     if (cmp > 0) break;
                     attachDirectPolicy(principal, nextPa);
                     nextPa = advance(paIter);
                 }
 
+                System.out.println("Principal " + principalId + ": roles=" + principal.roles().size() + ", directPolicies=" + principal.policies().size());
                 consumer.accept(principal);
             }
         }
@@ -108,10 +131,13 @@ public class PersistedPrincipalSource implements PrincipalSource {
         if (effective == null) effective = Instant.EPOCH;
         if (expiration == null) expiration = Instant.MAX;
 
-        if (expiration.isBefore(asOf) || effective.isAfter(asOf))
+        if (expiration.isBefore(asOf) || effective.isAfter(asOf)) {
+            System.out.println("  attachRole SKIP temporal: effective=" + effective + " expiration=" + expiration + " asOf=" + asOf);
             return;
+        }
 
         Role role = roles.get(roleId);
+        System.out.println("  attachRole roleId=" + roleId + " -> role=" + (role != null));
         if (role != null)
             principal.addRole(new PrincipalRoleAssignment(
                     principal, role, effective, expiration));
@@ -229,8 +255,14 @@ public class PersistedPrincipalSource implements PrincipalSource {
         for (var r : db.select(field("role_id", UUID.class), field("policy_id", UUID.class))
                 .from(table("role_policy_assignments")).where(field("role_id", UUID.class).in(ids))
                 .fetch()) {
-            Role role = roles.get(r.get(0, UUID.class));
-            Policy policy = policies.get(r.get(1, UUID.class));
+            UUID roleId = r.get(0, UUID.class);
+            UUID policyId = r.get(1, UUID.class);
+            Role role = roles.get(roleId);
+            Policy policy = policies.get(policyId);
+            System.out.println("Loading role " + roleId + " -> policy " + policyId + " (role=" + (role != null) + ", policy=" + (policy != null) + ")");
+            if (policy != null) {
+                System.out.println("  Policy statements: " + policy.statements().size());
+            }
             if (role != null && policy != null)
                 role.addPolicy(new RolePolicyAssignment(role, policy));
         }

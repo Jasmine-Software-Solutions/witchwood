@@ -150,6 +150,7 @@ public class ModelSnapshotCompiler {
             }
 
             IRole role = roleAssignment.role();
+            System.out.println("Building permission set for role " + role.id() + ", policyAssignments=" + role.policies().size());
             PermissionSetSnapshot permissionSet = rolePermissionSetCache.computeIfAbsent(
                     role.id(),
                     k -> buildPermissionSetFromPolicies(role.policies()));
@@ -168,6 +169,7 @@ public class ModelSnapshotCompiler {
             result.add(directSet);
         }
 
+        System.out.println("Principal " + principal.id() + " -> " + result.size() + " permission sets");
         return result;
     }
 

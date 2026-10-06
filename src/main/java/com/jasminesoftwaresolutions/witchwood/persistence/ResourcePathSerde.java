@@ -73,7 +73,11 @@ public final class ResourcePathSerde {
                 ? fromProtoNode(proto.getRoot())
                 : null;
 
-        return new CompiledResourcePath(proto.getService(), root);
+        String service = proto.getService();
+        if (CompiledResourcePath.ANY_SERVICE.equals(service))
+            service = CompiledResourcePath.ANY_SERVICE;
+
+        return new CompiledResourcePath(service, root);
     }
 
     /**

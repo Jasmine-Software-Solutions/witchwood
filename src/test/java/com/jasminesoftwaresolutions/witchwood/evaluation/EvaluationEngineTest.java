@@ -11,6 +11,7 @@ import io.github.jamsesso.jsonlogic.ast.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -64,7 +65,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -80,7 +81,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertFalse(engine.evaluate(principalId, ACTION_B, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_B, r, new HashMap<>()));
     }
 
     @Test
@@ -97,7 +98,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertFalse(engine.evaluate(principalId, ACTION_A, r2, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r2, new HashMap<>()));
     }
 
     @Test
@@ -107,7 +108,7 @@ class EvaluationEngineTest {
 
         compile(List.of());
 
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     // ---- deny before allow -------------------------------------------------
@@ -127,7 +128,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -154,7 +155,7 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         // Deny in direct set overrides allow in role set (deny evaluated first across all sets)
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     // ---- conditions --------------------------------------------------------
@@ -179,10 +180,14 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         // Condition true — access granted
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of("x", 42)));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>() {{
+            put("x", 42);
+        }}));
 
         // Condition false — access denied
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of("x", 99)));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>() {{
+            put("x", 99);
+        }}));
     }
 
     @Test
@@ -206,7 +211,7 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         // Null > 0 throws — statement does not apply, access denied
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -223,7 +228,7 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         // No context needed
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     // ---- service principals ------------------------------------------------
@@ -256,7 +261,7 @@ class EvaluationEngineTest {
                 .snapshot();
         engine = new EvaluationEngine(snapshot, JsonLogicEvaluators.withAllExpressions());
 
-        assertTrue(engine.evaluate(SERVICE, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(UUID.nameUUIDFromBytes(SERVICE.getBytes(StandardCharsets.UTF_8)), ACTION_A, r, new HashMap<>()));
     }
 
     // ---- resource matching ------------------------------------------------
@@ -277,7 +282,7 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         // Wildcard pattern matches any single-node resource
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -295,7 +300,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -313,7 +318,7 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     @Test
@@ -332,7 +337,7 @@ class EvaluationEngineTest {
         // Same path but different service
         var otherServiceResource = new CompiledResourcePath("other",
                 r.root());
-        assertFalse(engine.evaluate(principalId, ACTION_A, otherServiceResource, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, otherServiceResource, new HashMap<>()));
     }
 
     // ---- multiple actions ---------------------------------------------------
@@ -350,8 +355,8 @@ class EvaluationEngineTest {
 
         compile(List.of(principal));
 
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
-        assertTrue(engine.evaluate(principalId, ACTION_B, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
+        assertTrue(engine.evaluate(principalId, ACTION_B, r, new HashMap<>()));
     }
 
     // ---- snapshot swap -----------------------------------------------------
@@ -363,7 +368,7 @@ class EvaluationEngineTest {
 
         // Initial snapshot: no permissions
         compile(List.of());
-        assertFalse(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertFalse(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
 
         // New snapshot: grant permission
         var principal = new Principal(principalId);
@@ -377,7 +382,7 @@ class EvaluationEngineTest {
                 .snapshot();
 
         engine.snapshot(newSnapshot);
-        assertTrue(engine.evaluate(principalId, ACTION_A, r, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, r, new HashMap<>()));
     }
 
     // ---- string resource parsing -------------------------------------------
@@ -397,7 +402,7 @@ class EvaluationEngineTest {
         compile(List.of(principal));
 
         String resourcePath = SERVICE + "://res:" + resourceId;
-        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, new HashMap<>()));
     }
 
     @Test
@@ -419,8 +424,8 @@ class EvaluationEngineTest {
         // Repeated evaluations with the same string resource path produce
         // consistent results (internally the compiled path is cached, but
         // that is an implementation detail not asserted here).
-        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, Map.of()));
-        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, Map.of()));
-        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, Map.of()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, new HashMap<>()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, new HashMap<>()));
+        assertTrue(engine.evaluate(principalId, ACTION_A, resourcePath, new HashMap<>()));
     }
 }
