@@ -9,7 +9,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.netty.NettyChannelBuilder;
 
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -40,7 +39,11 @@ public class WitchwoodClient implements AutoCloseable {
      * @param tokenSupplier supplies a fresh JWT Bearer token for each call
      */
     public WitchwoodClient(String host, int port, Supplier<String> tokenSupplier) {
-        this(NettyChannelBuilder.forAddress(new InetSocketAddress(host, port))
+        // Use an explicit gRPC DNS target rather than pre-resolving into an
+        // InetSocketAddress: the server can move (Spot replacement) and the
+        // channel must follow it instead of pinning the first IP forever.
+        // Without the dns:/// scheme gRPC can select the unix resolver.
+        this(NettyChannelBuilder.forTarget("dns:///" + host + ":" + port)
                 .usePlaintext()
                 .build(), tokenSupplier);
     }
